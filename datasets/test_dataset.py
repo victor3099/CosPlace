@@ -53,13 +53,13 @@ class TestDataset(data.Dataset):
         
         # Find positives_per_query, which are within positive_dist_threshold (default 25 meters)
         knn = NearestNeighbors(n_jobs=-1)
-        knn.fit(self.database_utms)
+        knn.fit(self.database_utms) # set the values for which we want to find the nearest neighbors
         self.positives_per_query = knn.radius_neighbors(self.queries_utms,
                                                         radius=positive_dist_threshold,
                                                         return_distance=False)
         
         self.images_paths = [p for p in self.database_paths]
-        self.images_paths += [p for p in self.queries_paths]
+        self.images_paths += [p for p in self.queries_paths] #image path for database and query
         
         self.database_num = len(self.database_paths)
         self.queries_num = len(self.queries_paths)

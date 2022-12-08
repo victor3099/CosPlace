@@ -43,13 +43,13 @@ class TrainDataset(torch.utils.data.Dataset):
         
         # dataset_name should be either "processed", "small" or "raw", if you're using SF-XL
         dataset_name = os.path.basename(args.dataset_folder)
-        filename = f"cache/{dataset_name}_M{M}_N{N}_mipc{min_images_per_class}.torch"
-        if not os.path.exists(filename):
-            os.makedirs("cache", exist_ok=True)
+        filename = f"cache/{dataset_name}_M{M}_N{N}_mipc{min_images_per_class}.torch" 
+        if not os.path.exists(filename): #se il filename non esiste
+            os.makedirs("cache", exist_ok=True) #crea la cartella cache
             logging.info(f"Cached dataset {filename} does not exist, I'll create it now.")
-            self.initialize(dataset_folder, M, N, alpha, L, min_images_per_class, filename)
+            self.initialize(dataset_folder, M, N, alpha, L, min_images_per_class, filename) #divides the images by class, and gets the list of classes that belong to the same group, saves them into the filename
         elif current_group == 0:
-            logging.info(f"Using cached dataset {filename}")
+            logging.info(f"Using cached dataset {filename}") #If a cache file is already been built
         
         classes_per_group, self.images_per_class = torch.load(filename)
         if current_group >= len(classes_per_group):
@@ -57,7 +57,7 @@ class TrainDataset(torch.utils.data.Dataset):
                              f"groups, therefore I can't create the {current_group}th group. " +
                              "You should reduce the number of groups by setting for example " +
                              f"'--groups_num {current_group}'")
-        self.classes_ids = classes_per_group[current_group]
+        self.classes_ids = classes_per_group[current_group] #ids of classes of the group we're now considering
         
         if self.augmentation_device == "cpu":
             self.transform = T.Compose([
@@ -104,26 +104,27 @@ class TrainDataset(torch.utils.data.Dataset):
     def initialize(dataset_folder, M, N, alpha, L, min_images_per_class, filename):
         logging.debug(f"Searching training images in {dataset_folder}")
         
-        images_paths = sorted(glob(f"{dataset_folder}/**/*.jpg", recursive=True))
+        images_paths = sorted(glob(f"{dataset_folder}/**/*.jpg", recursive=True)) #lista nomi di file con estensione jpg nel dataset_folder, sortati
         logging.debug(f"Found {len(images_paths)} images")
         
         logging.debug("For each image, get its UTM east, UTM north and heading from its path")
         images_metadatas = [p.split("@") for p in images_paths]
         # field 1 is UTM east, field 2 is UTM north, field 9 is heading
-        utmeast_utmnorth_heading = [(m[1], m[2], m[9]) for m in images_metadatas]
-        utmeast_utmnorth_heading = np.array(utmeast_utmnorth_heading).astype(np.float)
+        utmeast_utmnorth_heading = [(m[1], m[2], m[9]) for m in images_metadatas] #tupla (east, north, heading)
+        utmeast_utmnorth_heading = np.array(utmeast_utmnorth_heading).astype(np.float) #numpy array
         
         logging.debug("For each image, get class and group to which it belongs")
-        class_id__group_id = [TrainDataset.get__class_id__group_id(*m, M, alpha, N, L)
+        class_id__group_id = [TrainDataset.get__class_id__group_id(*m, M, alpha, N, L) #* unpacking operator
                               for m in utmeast_utmnorth_heading]
         
         logging.debug("Group together images belonging to the same class")
-        images_per_class = defaultdict(list)
-        for image_path, (class_id, _) in zip(images_paths, class_id__group_id):
-            images_per_class[class_id].append(image_path)
+        images_per_class = defaultdict(list) #defaultdict provides a default value for keys that do not exist. creating a dictionary of a list. For ex if I now do images_per_class[4] it returns empty list []
+        for image_path, (class_id, _) in zip(images_paths, class_id__group_id): #zip creates tuple couples
+            images_per_class[class_id].append(image_path) #associate each image_path to the corresponding class_id
         
         # Images_per_class is a dict where the key is class_id, and the value
         # is a list with the paths of images within that class.
+        #Here we are filtering classes that have not a min_image_per_class value.
         images_per_class = {k: v for k, v in images_per_class.items() if len(v) >= min_images_per_class}
         
         logging.debug("Group together classes belonging to the same group")
@@ -150,12 +151,12 @@ class TrainDataset(torch.utils.data.Dataset):
             (e.g. (0, 1, 0)), and it is between (0, 0, 0) and (N, N, L).
         """
         rounded_utm_east = int(utm_east // M * M)  # Rounded to nearest lower multiple of M
-        rounded_utm_north = int(utm_north // M * M)
+        rounded_utm_north = int(utm_north // M * M) #floor division //, multiply by the value to round
         rounded_heading = int(heading // alpha * alpha)
         
         class_id = (rounded_utm_east, rounded_utm_north, rounded_heading)
         # group_id goes from (0, 0, 0) to (N, N, L)
-        group_id = (rounded_utm_east % (M * N) // M,
+        group_id = (rounded_utm_east % (M * N) // M, #multiply for M because N refers to M meters.
                     rounded_utm_north % (M * N) // M,
                     rounded_heading % (alpha * L) // alpha)
         return class_id, group_id
