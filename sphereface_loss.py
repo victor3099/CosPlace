@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import Parameter
-from torch import Variable
+from torch.autograd import Variable
 
 def cosine_sim(x1: torch.Tensor, x2: torch.Tensor, dim: int = 1, eps: float = 1e-8) -> torch.Tensor:
     ip = torch.mm(x1, x2.t())
@@ -52,10 +52,10 @@ class MarginCosineProduct(nn.Module):
         k = (self.m*theta/3.14159265).floor()
         n_one = k*0.0 - 1
         phi_theta = (n_one**k) * cos_m_theta - 2*k
-
+        x_norm = torch.norm(inputs, 2, dim=1)
         my_cosine_vector = one_hot * phi_theta + (1.0-one_hot) * cosine
 
-        output = self.s * (my_cosine_vector)
+        output = x_norm * (my_cosine_vector)
 
         #output sul quale verrà applicata la cross entropy loss.
         return output

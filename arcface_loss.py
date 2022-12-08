@@ -41,6 +41,7 @@ class MarginCosineProduct(nn.Module):
         my_cosine_vector = one_hot * phi + (1.0-one_hot) * cosine
 
         output = self.s * (my_cosine_vector)
+
         #output sul quale verrà applicata la cross entropy loss.
         return output
     
