@@ -53,8 +53,9 @@ class MarginCosineProduct(nn.Module):
         n_one = k*0.0 - 1
         phi_theta = (n_one**k) * cos_m_theta - 2*k
         x_norm = torch.norm(inputs, 2, dim=1)
+        x_norm = x_norm.view(-1, 1)
         my_cosine_vector = one_hot * phi_theta + (1.0-one_hot) * cosine
-
+        
         output = x_norm * (my_cosine_vector)
 
         #output sul quale verrà applicata la cross entropy loss.
