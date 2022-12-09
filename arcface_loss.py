@@ -19,7 +19,7 @@ class MarginCosineProduct(nn.Module):
         s: norm of input feature
         m: margin
     """
-    def __init__(self, in_features: int, out_features: int, s: float = 30.0, m: float = 0.40):
+    def __init__(self, in_features: int, out_features: int, s: float = 30.0, m: float = 0.50):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -27,6 +27,8 @@ class MarginCosineProduct(nn.Module):
         self.m = m
         self.cos_m = math.cos(m)
         self.sin_m = math.sin(m)
+        self.th = math.cos(math.pi - m)
+        self.mm = math.sin(math.pi - m) * m
         self.weight = Parameter(torch.Tensor(out_features, in_features))
         nn.init.xavier_uniform_(self.weight)
     
@@ -35,6 +37,9 @@ class MarginCosineProduct(nn.Module):
         cosine = cosine_sim(inputs, self.weight)
         sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
         phi = cosine * self.cos_m - sine * self.sin_m
+        #safe margin
+        phi = torch.where(cosine > self.th, phi, cosine - self.mm)
+
         one_hot = torch.zeros_like(cosine)
         #label.view => vettore colonna. 
         one_hot.scatter_(1, label.view(-1, 1), 1.0)
