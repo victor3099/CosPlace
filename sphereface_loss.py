@@ -19,7 +19,7 @@ class MarginCosineProduct(nn.Module):
         s: norm of input feature
         m: margin
     """
-    def __init__(self, in_features: int, out_features: int, s: float = 30.0, m: int = 4):
+    def __init__(self, in_features: int, out_features: int, s: float = 30.0, m: int = 3):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -52,8 +52,9 @@ class MarginCosineProduct(nn.Module):
         k = (self.m*theta/3.14159265).floor()
         n_one = k*0.0 - 1
         phi_theta = (n_one**k) * cos_m_theta - 2*k
-        x_norm = torch.norm(inputs, 2, dim=1)
-        x_norm = x_norm.view(-1, 1)
+        x_norm = inputs.pow(2).sum(1).pow(0.5)
+        #x_norm = torch.norm(inputs, 2, dim=1)
+        #x_norm = x_norm.view(-1, 1)
         my_cosine_vector = one_hot * phi_theta + (1.0-one_hot) * cosine
         
         output = x_norm * (my_cosine_vector)
