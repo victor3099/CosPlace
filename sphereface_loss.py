@@ -26,6 +26,15 @@ class MarginCosineProduct(nn.Module):
         self.s = s
         self.m = m
         self.weight = Parameter(torch.Tensor(out_features, in_features))
+        #Cosine multi-angle formulations
+        self.mlambda = [
+                lambda x: x**0,
+                lambda x: x**1,
+                lambda x: 2*x**2-1,
+                lambda x: 4*x**3-3*x,
+                lambda x: 8*x**4-8*x**2+1,
+                lambda x: 16*x**5-20*x**3+5*x
+            ]
         nn.init.xavier_uniform_(self.weight)
     
     def forward(self, inputs: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
@@ -36,28 +45,19 @@ class MarginCosineProduct(nn.Module):
         #Mette m solo dove c'è yi. Il resto rimane senza m. 
         one_hot.scatter_(1, label.view(-1, 1), 1.0)
         
-        #SphereFace
-
-        mlambda = [
-                lambda x: x**0,
-                lambda x: x**1,
-                lambda x: 2*x**2-1,
-                lambda x: 4*x**3-3*x,
-                lambda x: 8*x**4-8*x**2+1,
-                lambda x: 16*x**5-20*x**3+5*x
-            ]
-
-        cos_m_theta = mlambda[self.m](cosine)
+        #Formulations from https://github.com/clcarwin/sphereface_pytorch
+        cos_m_theta = self.mlambda[self.m](cosine)
         theta = Variable(cosine.acos())
         k = (self.m*theta/3.14159265).floor()
         n_one = k*0.0 - 1
+        
         phi_theta = (n_one**k) * cos_m_theta - 2*k
-        x_norm = inputs.pow(2).sum(1).pow(0.5)
+        #x_norm = inputs.pow(2).sum(1).pow(0.5)
         #x_norm = torch.norm(inputs, 2, dim=1)
         #x_norm = x_norm.view(-1, 1)
         my_cosine_vector = one_hot * phi_theta + (1.0-one_hot) * cosine
         
-        output = x_norm * (my_cosine_vector)
+        output = self.s * (my_cosine_vector)
 
         #output sul quale verrà applicata la cross entropy loss.
         return output
