@@ -20,6 +20,8 @@ from model import network
 from datasets.test_dataset import TestDataset
 from datasets.train_dataset import TrainDataset
 
+# Set the type of loss that you want to use
+type_loss = ""
 torch.backends.cudnn.benchmark = True  # Provides a speedup
 
 args = parser.parse_arguments()
@@ -51,7 +53,14 @@ model_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 groups = [TrainDataset(args, args.train_set_folder, M=args.M, alpha=args.alpha, N=args.N, L=args.L,
                        current_group=n, min_images_per_class=args.min_images_per_class) for n in range(args.groups_num)]
 # Each group has its own classifier, which depends on the number of classes in the group
-classifiers = [arcface_loss.MarginCosineProduct(args.fc_output_dim, len(group)) for group in groups]
+
+if type_loss == "arcface":
+    classifiers = [arcface_loss.MarginCosineProduct(args.fc_output_dim, len(group)) for group in groups]
+elif (type_loss == "sphereface"):
+    classifiers = [sphereface_loss.MarginCosineProduct(args.fc_output_dim, len(group)) for group in groups]
+else:
+    classifiers = [cosface_loss.MarginCosineProduct(args.fc_output_dim, len(group)) for group in groups]
+
 classifiers_optimizers = [torch.optim.Adam(classifier.parameters(), lr=args.classifiers_lr) for classifier in classifiers]
 
 logging.info(f"Using {len(groups)} groups")
