@@ -11,7 +11,7 @@ from train import type_loss
 
 margin_cosine_product = {"arcface": ArcFace,
                          "sphereface": SphereFace,
-                         "cosface": ArcFace}
+                         "cosface": CosFace}
 
 def move_to_device(optimizer: Type[torch.optim.Optimizer], device: str):
     for state in optimizer.state.values():
