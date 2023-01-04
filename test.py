@@ -23,6 +23,8 @@ def test(args: Namespace, eval_ds: Dataset, model: torch.nn.Module) -> Tuple[np.
         database_subset_ds = Subset(eval_ds, list(range(eval_ds.database_num)))
         database_dataloader = DataLoader(dataset=database_subset_ds, num_workers=args.num_workers,
                                          batch_size=args.infer_batch_size, pin_memory=(args.device == "cuda"))
+        # Used to store the descriptors of the images
+        # Both queries and database descriptors are stored in this array
         all_descriptors = np.empty((len(eval_ds), args.fc_output_dim), dtype="float32")
         for images, indices in tqdm(database_dataloader, ncols=100):
             descriptors = model(images.to(args.device))
@@ -42,6 +44,15 @@ def test(args: Namespace, eval_ds: Dataset, model: torch.nn.Module) -> Tuple[np.
     queries_descriptors = all_descriptors[eval_ds.database_num:]
     database_descriptors = all_descriptors[:eval_ds.database_num]
     
+    # Use cosine similarity to find predictions
+    faiss_index = faiss.IndexFlatIP(args.fc_output_dim)
+    faiss_index.add(database_descriptors)
+    del database_descriptors, all_descriptors
+
+    logging.debug("Calculating recalls")
+    _, predictions = faiss_index.search(queries_descriptors, max(RECALL_VALUES))
+
+    """
     # Use a kNN to find predictions
     faiss_index = faiss.IndexFlatL2(args.fc_output_dim)
     faiss_index.add(database_descriptors)
@@ -49,7 +60,7 @@ def test(args: Namespace, eval_ds: Dataset, model: torch.nn.Module) -> Tuple[np.
     
     logging.debug("Calculating recalls")
     _, predictions = faiss_index.search(queries_descriptors, max(RECALL_VALUES))
-    
+    """
     #### For each query, check if the predictions are correct
     positives_per_query = eval_ds.get_positives()
     recalls = np.zeros(len(RECALL_VALUES))
@@ -57,7 +68,10 @@ def test(args: Namespace, eval_ds: Dataset, model: torch.nn.Module) -> Tuple[np.
         for i, n in enumerate(RECALL_VALUES):
             if np.any(np.in1d(preds[:n], positives_per_query[query_index])):
                 recalls[i:] += 1
+                
                 break
+
+            
     # Divide by queries_num and multiply by 100, so the recalls are in percentages
     recalls = recalls / eval_ds.queries_num * 100
     recalls_str = ", ".join([f"R@{val}: {rec:.1f}" for val, rec in zip(RECALL_VALUES, recalls)])

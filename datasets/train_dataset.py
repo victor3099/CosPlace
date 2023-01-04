@@ -106,6 +106,10 @@ class TrainDataset(torch.utils.data.Dataset):
         
         images_paths = sorted(glob(f"{dataset_folder}/**/*.jpg", recursive=True)) #lista nomi di file con estensione jpg nel dataset_folder, sortati
         logging.debug(f"Found {len(images_paths)} images")
+
+        #Do the same for synthetic night images
+        images_paths += sorted(glob(f"syntetic_night_augmentation/**/*.jpg", recursive=True))
+        logging.debug(f"Found {len(images_paths)} images")
         
         logging.debug("For each image, get its UTM east, UTM north and heading from its path")
         images_metadatas = [p.split("@") for p in images_paths]

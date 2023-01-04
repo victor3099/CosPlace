@@ -64,5 +64,5 @@ def check_headers():
     images_metadatas = [p.split("@") for p in images_paths]
 
 if __name__ == "__main__":
-    plot_class_scatter(sys.argv[1])
+    plot_class_scatter("./cache/_M10_N5_mipc10.torch")
     

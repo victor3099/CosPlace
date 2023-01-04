@@ -41,6 +41,7 @@ if args.resume_model is not None:
     model_state_dict = torch.load(args.resume_model)
     model.load_state_dict(model_state_dict)
 
+# set model to train mode
 model = model.to(args.device).train()
 
 #### Optimizer
@@ -48,6 +49,7 @@ criterion = torch.nn.CrossEntropyLoss()
 model_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 #### Datasets
+# Each group is treated as a different dataset
 groups = [TrainDataset(args, args.train_set_folder, M=args.M, alpha=args.alpha, N=args.N, L=args.L,
                        current_group=n, min_images_per_class=args.min_images_per_class) for n in range(args.groups_num)]
 # Each group has its own classifier, which depends on the number of classes in the group
@@ -104,14 +106,14 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
     current_group_num = epoch_num % args.groups_num
     classifiers[current_group_num] = classifiers[current_group_num].to(args.device)
     util.move_to_device(classifiers_optimizers[current_group_num], args.device)
-    
+    # setup the dataloader
     dataloader = commons.InfiniteDataLoader(groups[current_group_num], num_workers=args.num_workers,
                                             batch_size=args.batch_size, shuffle=True,
                                             pin_memory=(args.device == "cuda"), drop_last=True)
     
     dataloader_iterator = iter(dataloader)
     model = model.train()
-    
+    #list of epoch losses. At the end the mean will be computed
     epoch_losses = np.zeros((0, 1), dtype=np.float32)
     for iteration in tqdm(range(args.iterations_per_epoch), ncols=100):
         images, targets, _ = next(dataloader_iterator)
@@ -124,13 +126,19 @@ for epoch_num in range(start_epoch_num, args.epochs_num):
         classifiers_optimizers[current_group_num].zero_grad()
         
         if not args.use_amp16:
+            #Get descriptors from the model (ends with fc and normalization)
             descriptors = model(images)
+            #Gets the output, that is the cosine similarity between the descriptors and the weights of the classifier
             output = classifiers[current_group_num](descriptors, targets)
+            #Applies the softmax loss
             loss = criterion(output, targets)
             loss.backward()
+            #append the loss to the epoch losses
             epoch_losses = np.append(epoch_losses, loss.item())
             del loss, output, images
+            #optimize the parameters
             model_optimizer.step()
+            #optimize the parameters of the classifier
             classifiers_optimizers[current_group_num].step()
         else:  # Use AMP 16
             with torch.cuda.amp.autocast():

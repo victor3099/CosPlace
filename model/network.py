@@ -22,6 +22,7 @@ class GeoLocalizationNet(nn.Module):
         self.backbone, features_dim = get_backbone(backbone)
         self.aggregation = nn.Sequential(
                 L2Norm(),
+                # For each channel, get only one value
                 GeM(),
                 Flatten(),
                 nn.Linear(features_dim, fc_output_dim),

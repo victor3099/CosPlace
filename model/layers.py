@@ -6,6 +6,7 @@ from torch.nn.parameter import Parameter
 
 
 def gem(x, p=torch.ones(1)*3, eps: float = 1e-6):
+    #x is batch_size x channels x h x w
     return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
 
 
@@ -27,7 +28,9 @@ class Flatten(torch.nn.Module):
         super().__init__()
     
     def forward(self, x):
+        #cause is out of GeM pooling, so it's batch_size x channels x 1 x 1
         assert x.shape[2] == x.shape[3] == 1, f"{x.shape[2]} != {x.shape[3]} != 1"
+        #Goes from batch_size x channels x 1 x 1 to batch_size x channels
         return x[:, :, 0, 0]
 
 
