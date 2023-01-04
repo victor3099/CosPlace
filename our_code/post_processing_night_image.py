@@ -2,7 +2,9 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageColor, ImageFilter
 import numpy as np
 from random import gauss
 import os
-
+from glob import glob
+from tqdm import tqdm
+import sys
 
 def brightness(image, factorMin, factorMax):
     enhancer = ImageEnhance.Brightness(image)
@@ -98,9 +100,12 @@ def apply_post_processing(filename):
     return image
 
 if __name__ == "__main__":
-    directory = "day_images"
-    output_directory = "night_images"
-    for filename in os.listdir(directory):
+    directory = sys.argv[1]
+    output_directory = sys.argv[2]
+    if not os.path.isdir(output_directory):
+      os.makedirs(output_directory)
+    images_paths = sorted(glob(f"{directory}/**/*.jpg", recursive=True))
+    for filename in tqdm(images_paths):
         night_image = apply_post_processing(os.path.join(directory, filename))
         night_image.save(os.path.join(output_directory, filename))
     
