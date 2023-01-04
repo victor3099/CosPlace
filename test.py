@@ -44,11 +44,11 @@ def test(args: Namespace, eval_ds: Dataset, model: torch.nn.Module) -> Tuple[np.
     queries_descriptors = all_descriptors[eval_ds.database_num:]
     database_descriptors = all_descriptors[:eval_ds.database_num]
     
-    # Use cosine similarity to find predictions
-    faiss_index = faiss.IndexFlatIP(args.fc_output_dim)
+     # Use a kNN to find predictions
+    faiss_index = faiss.IndexFlatL2(args.fc_output_dim)
     faiss_index.add(database_descriptors)
     del database_descriptors, all_descriptors
-
+    
     logging.debug("Calculating recalls")
     _, predictions = faiss_index.search(queries_descriptors, max(RECALL_VALUES))
 
